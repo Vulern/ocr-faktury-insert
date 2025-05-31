@@ -1,1 +1,4 @@
-pytesseract\nopencv-python\nPillow\nlxml
+pytesseract
+opencv-python
+Pillow
+lxml
