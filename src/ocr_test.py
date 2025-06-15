@@ -37,3 +37,17 @@ print("NIP:", parser.extract_nip(text))
 print("Numer faktury:", parser.extract_invoice_number(text))
 print("Data:", parser.extract_date(text))
 print("Kwota brutto:", parser.extract_total(text))
+
+from exporter import save_to_csv, save_to_json
+
+extracted_data = {
+    "NIP": parser.extract_nip(text),
+    "Numer faktury": parser.extract_invoice_number(text),
+    "Data": parser.extract_date(text),
+    "Kwota brutto": parser.extract_total(text),
+}
+
+print("\n=== Dane zapisane ===")
+save_to_csv(extracted_data)
+save_to_json(extracted_data)
+print("Zapisano do output/faktura.csv i faktura.json")
