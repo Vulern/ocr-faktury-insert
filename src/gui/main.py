@@ -1,58 +1,77 @@
-# -*- coding: utf-8 -*-
+# gui/main.py
 
-import tkinter as tk
+from ttkbootstrap import Style
+from ttkbootstrap.constants import *
+import ttkbootstrap as ttk
 from tkinter import filedialog, messagebox
-from tkinter import ttk
+from PIL import Image, ImageTk
+import os
 
 from ocr.ocr import extract_invoice_data
 from export import exporter
 
 
-class InvoiceApp(tk.Tk):
+class OCRApp(ttk.Window):
     def __init__(self):
-        super().__init__()
-        self.title("OCR Faktury - Insert GT")
-        self.geometry("600x400")
-        self.create_widgets()
+        super().__init__(title="OCR Faktury", themename="darkly")  # <--- tu wybierasz motyw
 
-    def create_widgets(self):
-        # Przycisk do wyboru pliku
-        self.select_btn = ttk.Button(self, text="Wybierz fakturę", command=self.select_file)
+        self.geometry("800x600")
+        self.image_label = None
+        self.file_path = None
+
+        # Przycisk wyboru faktury
+        self.select_btn = ttk.Button(self, text="📄 Wybierz fakturę", command=self.select_file, bootstyle="primary")
         self.select_btn.pack(pady=10)
 
-        # Pole tekstowe do wyświetlania wyniku
-        self.text_box = tk.Text(self, height=15, width=70)
-        self.text_box.pack(padx=10, pady=10)
+        # Etykiety i pola edycji danych
+        self.fields = {}
+        for label in ["NIP", "Numer faktury", "Data", "Kwota brutto"]:
+            frame = ttk.Frame(self)
+            frame.pack(fill="x", padx=10, pady=5)
+            ttk.Label(frame, text=label + ":", width=20).pack(side="left")
+            entry = ttk.Entry(frame)
+            entry.pack(fill="x", expand=True, side="left")
+            self.fields[label] = entry
 
-        # Przycisk do zapisania danych
-        self.save_btn = ttk.Button(self, text="Zapisz do CSV/JSON", command=self.save_data)
+        # Podgląd faktury (obrazek)
+        self.image_label = ttk.Label(self)
+        self.image_label.pack(pady=10)
+
+        # Przycisk zapisu
+        self.save_btn = ttk.Button(self, text="💾 Zapisz dane", command=self.save_data, bootstyle="success")
         self.save_btn.pack(pady=10)
-        self.save_btn["state"] = tk.DISABLED
 
     def select_file(self):
-        file_path = filedialog.askopenfilename(
-            title="Wybierz plik faktury",
-            filetypes=[("Pliki graficzne", "*.jpg *.jpeg *.png *.tiff")]
-        )
-        if file_path:
+        filetypes = [("Pliki graficzne", "*.png *.jpg *.jpeg"), ("Wszystkie pliki", "*.*")]
+        self.file_path = filedialog.askopenfilename(title="Wybierz fakturę", filetypes=filetypes)
+        if self.file_path:
             try:
-                self.data = extract_invoice_data(file_path)
-                self.text_box.delete(1.0, tk.END)
-                for k, v in self.data.items():
-                    self.text_box.insert(tk.END, f"{k}: {v}\n")
-                self.save_btn["state"] = tk.NORMAL
+                data = extract_invoice_data(self.file_path)
+                for k, v in self.fields.items():
+                    v.delete(0, "end")
+                    v.insert(0, data.get(k, ""))
+                self.show_image(self.file_path)
             except Exception as e:
-                messagebox.showerror("Błąd", f"Wystąpił problem: {str(e)}")
+                messagebox.showerror("Błąd OCR", str(e))
+
+    def show_image(self, path):
+        image = Image.open(path)
+        max_size = (600, 300)
+        image.thumbnail(max_size, Image.Resampling.LANCZOS)
+        photo = ImageTk.PhotoImage(image)
+        self.image_label.configure(image=photo)
+        self.image_label.image = photo
 
     def save_data(self):
+        data = {k: v.get() for k, v in self.fields.items()}
         try:
-            exporter.save_to_csv(self.data)
-            exporter.save_to_json(self.data)
-            messagebox.showinfo("Zapisano", "Dane zapisane do output/faktura.csv i faktura.json")
+            exporter.save_to_csv(data)
+            exporter.save_to_json(data)
+            messagebox.showinfo("Sukces", "Dane zapisane pomyślnie!")
         except Exception as e:
-            messagebox.showerror("Błąd zapisu", f"Nie udało się zapisać danych:\n{str(e)}")
+            messagebox.showerror("Błąd zapisu", str(e))
 
 
 if __name__ == "__main__":
-    app = InvoiceApp()
+    app = OCRApp()
     app.mainloop()
